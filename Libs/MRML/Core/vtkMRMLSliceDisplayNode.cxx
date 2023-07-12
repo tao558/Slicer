@@ -135,6 +135,9 @@ void vtkMRMLSliceDisplayNode::SetIntersectingSlicesInteractiveModeEnabled(
     case vtkMRMLSliceDisplayNode::ModeRotation:
       this->SetIntersectingSlicesRotationEnabled(enabled);
       break;
+    case vtkMRMLSliceDisplayNode::ModeThickSlabReconstuction:
+      this->SetIntersectingSlicesThickSlabReconstructionEnabled(enabled);
+      break;
     default:
       vtkErrorMacro("Unknown mode");
       break;
@@ -151,6 +154,8 @@ bool vtkMRMLSliceDisplayNode::GetIntersectingSlicesInteractiveModeEnabled(
       return this->GetIntersectingSlicesTranslationEnabled();
     case vtkMRMLSliceDisplayNode::ModeRotation:
       return this->GetIntersectingSlicesRotationEnabled();
+    case vtkMRMLSliceDisplayNode::ModeThickSlabReconstuction:
+      return this->GetIntersectingSlicesThickSlabReconstructionEnabled();
     default:
       vtkErrorMacro("Unknown mode");
     }

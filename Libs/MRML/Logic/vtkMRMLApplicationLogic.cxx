@@ -977,6 +977,9 @@ void vtkMRMLApplicationLogic::SetIntersectingSlicesEnabled(
         case vtkMRMLApplicationLogic::IntersectingSlicesRotation:
           sliceDisplayNode->SetIntersectingSlicesRotationEnabled(enabled);
           break;
+        case vtkMRMLApplicationLogic::IntersectingSlicesThickSlabReconstruction:
+          sliceDisplayNode->SetIntersectingSlicesThickSlabReconstructionEnabled(enabled);
+          break;
         }
       }
     }

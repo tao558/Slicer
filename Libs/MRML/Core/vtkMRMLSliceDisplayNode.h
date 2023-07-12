@@ -69,12 +69,16 @@ public:
   vtkGetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkSetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkBooleanMacro(IntersectingSlicesRotationEnabled, bool);
+  vtkGetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
+  vtkSetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
+  vtkBooleanMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
   //@}
 
   enum IntersectingSlicesInteractiveMode
   {
     ModeRotation,
-    ModeTranslation
+    ModeTranslation,
+    ModeThickSlabReconstuction
   };
 
   //@{
@@ -206,6 +210,7 @@ protected:
   bool IntersectingSlicesInteractive{ false };
   bool IntersectingSlicesTranslationEnabled{ true };
   bool IntersectingSlicesRotationEnabled{ true };
+  bool IntersectingSlicesThickSlabReconstructionEnabled{ false };
 
   int IntersectingSlicesInteractiveHandlesVisibilityMode{ NeverVisible };
 
