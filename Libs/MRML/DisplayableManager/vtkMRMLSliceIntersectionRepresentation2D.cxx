@@ -49,6 +49,7 @@
 #include "vtkLeaderActor2D.h"
 #include "vtkTransform.h"
 #include "vtkActor2D.h"
+#include "vtkMathUtilities.h"
 #include "vtkWindow.h"
 
 static const int CONTROL_MODIFIER = 1;
@@ -70,9 +71,29 @@ public:
     this->Actor = vtkSmartPointer<vtkActor2D>::New();
     this->Actor->SetVisibility(false); // invisible until slice node is set
 
+    this->FirstThicknessLineSource = vtkSmartPointer<vtkLineSource>::New();
+    this->FirstThicknessMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+    this->FirstThicknessProperty = vtkSmartPointer<vtkProperty2D>::New();
+    this->FirstThicknessActor = vtkSmartPointer<vtkActor2D>::New();
+    this->FirstThicknessActor->SetVisibility(false); // invisible until slice node is set
+
+    this->SecondThicknessLineSource = vtkSmartPointer<vtkLineSource>::New();
+    this->SecondThicknessMapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+    this->SecondThicknessProperty = vtkSmartPointer<vtkProperty2D>::New();
+    this->SecondThicknessActor = vtkSmartPointer<vtkActor2D>::New();
+    this->SecondThicknessActor->SetVisibility(false); // invisible until slice node is set
+
     this->Mapper->SetInputConnection(this->LineSource->GetOutputPort());
     this->Actor->SetMapper(this->Mapper);
     this->Actor->SetProperty(this->Property);
+
+    this->FirstThicknessMapper->SetInputConnection(this->FirstThicknessLineSource->GetOutputPort());
+    this->FirstThicknessActor->SetMapper(this->FirstThicknessMapper);
+    this->FirstThicknessActor->SetProperty(this->FirstThicknessProperty);
+
+    this->SecondThicknessMapper->SetInputConnection(this->SecondThicknessLineSource->GetOutputPort());
+    this->SecondThicknessActor->SetMapper(this->SecondThicknessMapper);
+    this->SecondThicknessActor->SetProperty(this->SecondThicknessProperty);
   }
 
   //----------------------------------------------------------------------
@@ -105,6 +126,8 @@ public:
   void GetActors2D(vtkPropCollection *pc)
   {
     pc->AddItem(this->Actor);
+    pc->AddItem(this->FirstThicknessActor);
+    pc->AddItem(this->SecondThicknessActor);
   }
 
   //----------------------------------------------------------------------
@@ -115,12 +138,16 @@ public:
       return;
       }
     renderer->AddViewProp(this->Actor);
+    renderer->AddViewProp(this->FirstThicknessActor);
+    renderer->AddViewProp(this->SecondThicknessActor);
   }
 
   //----------------------------------------------------------------------
   void ReleaseGraphicsResources(vtkWindow *win)
   {
     this->Actor->ReleaseGraphicsResources(win);
+    this->FirstThicknessActor->ReleaseGraphicsResources(win);
+    this->SecondThicknessActor->ReleaseGraphicsResources(win);
   }
 
   //----------------------------------------------------------------------
@@ -130,6 +157,14 @@ public:
     if (this->Actor->GetVisibility())
       {
       count += this->Actor->RenderOverlay(viewport);
+      }
+    if (this->FirstThicknessActor->GetVisibility())
+      {
+      count += this->FirstThicknessActor->RenderOverlay(viewport);
+      }
+    if (this->SecondThicknessActor->GetVisibility())
+      {
+      count += this->SecondThicknessActor->RenderOverlay(viewport);
       }
     return count;
   }
@@ -143,12 +178,21 @@ public:
       return;
       }
     renderer->RemoveViewProp(this->Actor);
+    renderer->RemoveViewProp(this->FirstThicknessActor);
+    renderer->RemoveViewProp(this->SecondThicknessActor);
   }
 
   //----------------------------------------------------------------------
   void SetVisibility(bool visibility)
   {
     this->Actor->SetVisibility(visibility);
+  }
+
+  //----------------------------------------------------------------------
+  void SetThicknessVisibility(bool visibility)
+  {
+    this->FirstThicknessActor->SetVisibility(visibility);
+    this->SecondThicknessActor->SetVisibility(visibility);
   }
 
   //----------------------------------------------------------------------
@@ -161,6 +205,17 @@ public:
   vtkSmartPointer<vtkPolyDataMapper2D> Mapper;
   vtkSmartPointer<vtkProperty2D> Property;
   vtkSmartPointer<vtkActor2D> Actor;
+
+  vtkSmartPointer<vtkLineSource> FirstThicknessLineSource;
+  vtkSmartPointer<vtkPolyDataMapper2D> FirstThicknessMapper;
+  vtkSmartPointer<vtkProperty2D> FirstThicknessProperty;
+  vtkSmartPointer<vtkActor2D> FirstThicknessActor;
+
+  vtkSmartPointer<vtkLineSource> SecondThicknessLineSource;
+  vtkSmartPointer<vtkPolyDataMapper2D> SecondThicknessMapper;
+  vtkSmartPointer<vtkProperty2D> SecondThicknessProperty;
+  vtkSmartPointer<vtkActor2D> SecondThicknessActor;
+
   vtkWeakPointer<vtkMRMLSliceLogic> SliceLogic;
   vtkWeakPointer<vtkCallbackCommand> Callback;
 };
@@ -426,6 +481,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     if (!showNonInteractiveSliceIntersection)
       {
       pipeline->SetVisibility(false);
+      pipeline->SetThicknessVisibility(false);
       return;
       }
     pipeline->Property->SetLineWidth(displayNode->GetLineWidth());
@@ -461,6 +517,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
   if (!intersectionFound)
     {
     pipeline->SetVisibility(false);
+    pipeline->SetThicknessVisibility(false);
     return;
     }
 
@@ -468,6 +525,46 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
   pipeline->LineSource->SetPoint2(intersectionPoint2);
 
   pipeline->SetVisibility(true);
+
+  if (intersectingSliceNode->GetSlabReconstructionEnabled())
+    {
+    double firstSlabThicknessPoint1[4] = { intersectionPoint1[0], intersectionPoint1[1], intersectionPoint1[2], intersectionPoint1[3] };
+    double firstSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
+    double secondSlabThicknessPoint1[4] = { intersectionPoint1[0], intersectionPoint1[1], intersectionPoint1[2], intersectionPoint1[3] };
+    double secondSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
+    double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness();
+
+    if (!vtkMathUtilities::FuzzyCompare<double>(intersectionPoint1[0], intersectionPoint2[0]))
+      {
+      firstSlabThicknessPoint1[1] += slabThickness;
+      firstSlabThicknessPoint2[1] += slabThickness;
+      secondSlabThicknessPoint1[1] -= slabThickness;
+      secondSlabThicknessPoint2[1] -= slabThickness;
+      }
+    else if (!vtkMathUtilities::FuzzyCompare<double>(intersectionPoint1[1], intersectionPoint2[1]))
+      {
+      firstSlabThicknessPoint1[0] += slabThickness;
+      firstSlabThicknessPoint2[0] += slabThickness;
+      secondSlabThicknessPoint1[0] -= slabThickness;
+      secondSlabThicknessPoint2[0] -= slabThickness;
+      }
+
+    pipeline->FirstThicknessProperty->SetLineWidth(displayNode->GetLineWidth());
+    pipeline->FirstThicknessProperty->SetColor(intersectingSliceNode->GetLayoutColor());
+    pipeline->SecondThicknessProperty->SetLineWidth(displayNode->GetLineWidth());
+    pipeline->SecondThicknessProperty->SetColor(intersectingSliceNode->GetLayoutColor());
+
+    pipeline->FirstThicknessLineSource->SetPoint1(firstSlabThicknessPoint1);
+    pipeline->FirstThicknessLineSource->SetPoint2(firstSlabThicknessPoint2);
+    pipeline->SecondThicknessLineSource->SetPoint1(secondSlabThicknessPoint1);
+    pipeline->SecondThicknessLineSource->SetPoint2(secondSlabThicknessPoint2);
+
+    pipeline->SetThicknessVisibility(true);
+    }
+  else
+    {
+    pipeline->SetThicknessVisibility(false);
+    }
 }
 
 //----------------------------------------------------------------------
