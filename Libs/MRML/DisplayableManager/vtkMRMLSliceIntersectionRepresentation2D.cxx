@@ -532,7 +532,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     double firstSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
     double secondSlabThicknessPoint1[4] = { intersectionPoint1[0], intersectionPoint1[1], intersectionPoint1[2], intersectionPoint1[3] };
     double secondSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
-    double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness();
+    double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness() / 2;
 
     if (!vtkMathUtilities::FuzzyCompare<double>(intersectionPoint1[0], intersectionPoint2[0]))
       {
