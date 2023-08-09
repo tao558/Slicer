@@ -52,6 +52,7 @@
 #include "vtkLine.h"
 #include "vtkLineSource.h"
 #include "vtkMath.h"
+#include "vtkMathUtilities.h"
 #include "vtkMatrix3x3.h"
 #include "vtkMatrix4x4.h"
 #include "vtkObjectFactory.h"
@@ -89,6 +90,9 @@ static const double HANDLES_MIN_LINE_LENGTH = 50.0;
 // Intersection line
 static const double INTERSECTION_LINE_RESOLUTION = 50; // default = 8
 
+// Thick slab reconstruction line
+static const double THICKNESS_LINE_RESOLUTION = 50; // default = 8
+
 // Handles
 static const double HANDLES_CIRCLE_THETA_RESOLUTION = 100; // default = 8
 static const double HANDLES_CIRCLE_PHI_RESOLUTION = 100; // default = 8
@@ -117,7 +121,7 @@ class SliceIntersectionInteractionDisplayPipeline
     //----------------------------------------------------------------------
     SliceIntersectionInteractionDisplayPipeline()
     {
-      // Intersection line 1
+      // Intersection line 1 (first half)
       this->IntersectionLine1 = vtkSmartPointer<vtkLineSource>::New();
       this->IntersectionLine1->SetResolution(INTERSECTION_LINE_RESOLUTION);
       this->IntersectionLine1->Update();
@@ -129,7 +133,7 @@ class SliceIntersectionInteractionDisplayPipeline
       this->IntersectionLine1Actor->SetMapper(this->IntersectionLine1Mapper);
       this->IntersectionLine1Actor->SetProperty(this->IntersectionLine1Property);
 
-      // Intersection line 2
+      // Intersection line 2 (second half)
       this->IntersectionLine2 = vtkSmartPointer<vtkLineSource>::New();
       this->IntersectionLine2->SetResolution(INTERSECTION_LINE_RESOLUTION);
       this->IntersectionLine2->Update();
@@ -140,6 +144,30 @@ class SliceIntersectionInteractionDisplayPipeline
       this->IntersectionLine2Mapper->SetInputConnection(this->IntersectionLine2->GetOutputPort());
       this->IntersectionLine2Actor->SetMapper(this->IntersectionLine2Mapper);
       this->IntersectionLine2Actor->SetProperty(this->IntersectionLine2Property);
+
+      // Thick slab line 1 (either left or right)
+      this->ThicknessLine1 = vtkSmartPointer<vtkLineSource>::New();
+      this->ThicknessLine1->SetResolution(THICKNESS_LINE_RESOLUTION);
+      this->ThicknessLine1->Update();
+      this->ThicknessLine1Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+      this->ThicknessLine1Property = vtkSmartPointer<vtkProperty2D>::New();
+      this->ThicknessLine1Actor = vtkSmartPointer<vtkActor2D>::New();
+      this->ThicknessLine1Actor->SetVisibility(false); // invisible until slice node is set
+      this->ThicknessLine1Mapper->SetInputConnection(this->ThicknessLine1->GetOutputPort());
+      this->ThicknessLine1Actor->SetMapper(this->ThicknessLine1Mapper);
+      this->ThicknessLine1Actor->SetProperty(this->ThicknessLine1Property);
+
+      // Thick slab line 2 (either right or left)
+      this->ThicknessLine2 = vtkSmartPointer<vtkLineSource>::New();
+      this->ThicknessLine2->SetResolution(THICKNESS_LINE_RESOLUTION);
+      this->ThicknessLine2->Update();
+      this->ThicknessLine2Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+      this->ThicknessLine2Property = vtkSmartPointer<vtkProperty2D>::New();
+      this->ThicknessLine2Actor = vtkSmartPointer<vtkActor2D>::New();
+      this->ThicknessLine2Actor->SetVisibility(false); // invisible until slice node is set
+      this->ThicknessLine2Mapper->SetInputConnection(this->ThicknessLine2->GetOutputPort());
+      this->ThicknessLine2Actor->SetMapper(this->ThicknessLine2Mapper);
+      this->ThicknessLine2Actor->SetProperty(this->ThicknessLine2Property);
 
       // Center sphere
       this->TranslationOuterHandle = vtkSmartPointer<vtkSphereSource>::New();
@@ -627,6 +655,8 @@ class SliceIntersectionInteractionDisplayPipeline
     {
       pc->AddItem(this->IntersectionLine1Actor);
       pc->AddItem(this->IntersectionLine2Actor);
+      pc->AddItem(this->ThicknessLine1Actor);
+      pc->AddItem(this->ThicknessLine2Actor);
       pc->AddItem(this->TranslationOuterHandleActor);
       pc->AddItem(this->TranslationInnerHandleActor);
       pc->AddItem(this->RotationHandle1Actor);
@@ -644,6 +674,8 @@ class SliceIntersectionInteractionDisplayPipeline
         }
       renderer->AddViewProp(this->IntersectionLine1Actor);
       renderer->AddViewProp(this->IntersectionLine2Actor);
+      renderer->AddViewProp(this->ThicknessLine1Actor);
+      renderer->AddViewProp(this->ThicknessLine2Actor);
       renderer->AddViewProp(this->TranslationOuterHandleActor);
       renderer->AddViewProp(this->TranslationInnerHandleActor);
       renderer->AddViewProp(this->RotationHandle1Actor);
@@ -657,6 +689,8 @@ class SliceIntersectionInteractionDisplayPipeline
     {
       this->IntersectionLine1Actor->ReleaseGraphicsResources(win);
       this->IntersectionLine2Actor->ReleaseGraphicsResources(win);
+      this->ThicknessLine1Actor->ReleaseGraphicsResources(win);
+      this->ThicknessLine2Actor->ReleaseGraphicsResources(win);
       this->TranslationOuterHandleActor->ReleaseGraphicsResources(win);
       this->TranslationInnerHandleActor->ReleaseGraphicsResources(win);
       this->RotationHandle1Actor->ReleaseGraphicsResources(win);
@@ -674,6 +708,8 @@ class SliceIntersectionInteractionDisplayPipeline
         }
       renderer->RemoveViewProp(this->IntersectionLine1Actor);
       renderer->RemoveViewProp(this->IntersectionLine2Actor);
+      renderer->RemoveViewProp(this->ThicknessLine1Actor);
+      renderer->RemoveViewProp(this->ThicknessLine2Actor);
       renderer->RemoveViewProp(this->TranslationOuterHandleActor);
       renderer->RemoveViewProp(this->TranslationInnerHandleActor);
       renderer->RemoveViewProp(this->RotationHandle1Actor);
@@ -693,6 +729,14 @@ class SliceIntersectionInteractionDisplayPipeline
       if (this->IntersectionLine2Actor->GetVisibility())
         {
       this->IntersectionLine2Actor->RenderOverlay(viewport);
+        }
+      if (this->ThicknessLine1Actor->GetVisibility())
+        {
+        this->ThicknessLine1Actor->RenderOverlay(viewport);
+        }
+      if (this->ThicknessLine2Actor->GetVisibility())
+        {
+      this->ThicknessLine2Actor->RenderOverlay(viewport);
         }
       if (this->TranslationOuterHandleActor->GetVisibility())
         {
@@ -732,6 +776,18 @@ class SliceIntersectionInteractionDisplayPipeline
         }
       this->IntersectionLine1Actor->SetVisibility(visibility);
       this->IntersectionLine2Actor->SetVisibility(visibility);
+      }
+
+    //----------------------------------------------------------------------
+    void SetThicknessVisibility(bool visibility)
+      {
+      if (static_cast<bool>(this->ThicknessLine1Actor->GetVisibility()) != visibility
+        || static_cast<bool>(this->ThicknessLine2Actor->GetVisibility()) != visibility)
+        {
+        this->NeedToRender = true;
+        }
+      this->ThicknessLine1Actor->SetVisibility(visibility);
+      this->ThicknessLine2Actor->SetVisibility(visibility);
       }
 
     //----------------------------------------------------------------------
@@ -791,6 +847,16 @@ class SliceIntersectionInteractionDisplayPipeline
     vtkSmartPointer<vtkPolyDataMapper2D> IntersectionLine2Mapper;
     vtkSmartPointer<vtkProperty2D> IntersectionLine2Property;
     vtkSmartPointer<vtkActor2D> IntersectionLine2Actor;
+
+    vtkSmartPointer<vtkLineSource> ThicknessLine1;
+    vtkSmartPointer<vtkPolyDataMapper2D> ThicknessLine1Mapper;
+    vtkSmartPointer<vtkProperty2D> ThicknessLine1Property;
+    vtkSmartPointer<vtkActor2D> ThicknessLine1Actor;
+
+    vtkSmartPointer<vtkLineSource> ThicknessLine2;
+    vtkSmartPointer<vtkPolyDataMapper2D> ThicknessLine2Mapper;
+    vtkSmartPointer<vtkProperty2D> ThicknessLine2Property;
+    vtkSmartPointer<vtkActor2D> ThicknessLine2Actor;
 
     vtkSmartPointer<vtkSphereSource> TranslationOuterHandle;
     vtkSmartPointer<vtkPolyDataMapper2D> TranslationOuterHandleMapper;
@@ -1037,6 +1103,7 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
     || !intersectingSliceNode->IsMappedInLayout())
     {
     pipeline->SetIntersectionsVisibility(false);
+    pipeline->SetThicknessVisibility(false);
     pipeline->SetHandlesVisibility(false);
     if (pipeline->NeedToRender)
       {
@@ -1054,6 +1121,7 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
     if (!sliceInteractionHandlesInteractive)
       {
       pipeline->SetIntersectionsVisibility(false);
+      pipeline->SetThicknessVisibility(false);
       pipeline->SetHandlesVisibility(false);
       if (pipeline->NeedToRender)
         {
@@ -1479,6 +1547,46 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
       {
       sliceOffsetHandlePoints->InsertNextPoint(linePoint);
       }
+    }
+
+  if (intersectingSliceNode->GetSlabReconstructionEnabled())
+    {
+    double firstSlabThicknessPoint1[4] = { intersectionLineTip1[0], intersectionLineTip1[1], intersectionLineTip1[2], 1 };
+    double firstSlabThicknessPoint2[4] = { intersectionLineTip2[0], intersectionLineTip2[1], intersectionLineTip2[2], 1 };
+    double secondSlabThicknessPoint1[4] = { intersectionLineTip1[0], intersectionLineTip1[1], intersectionLineTip1[2], 1 };
+    double secondSlabThicknessPoint2[4] = { intersectionLineTip2[0], intersectionLineTip2[1], intersectionLineTip2[2], 1 };
+    double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness() / 2;
+
+    if (!vtkMathUtilities::FuzzyCompare<double>(intersectionLineTip1[0], intersectionLineTip2[0]))
+      {
+      firstSlabThicknessPoint1[1] += slabThickness;
+      firstSlabThicknessPoint2[1] += slabThickness;
+      secondSlabThicknessPoint1[1] -= slabThickness;
+      secondSlabThicknessPoint2[1] -= slabThickness;
+      }
+    else if (!vtkMathUtilities::FuzzyCompare<double>(intersectionLineTip1[1], intersectionLineTip2[1]))
+      {
+      firstSlabThicknessPoint1[0] += slabThickness;
+      firstSlabThicknessPoint2[0] += slabThickness;
+      secondSlabThicknessPoint1[0] -= slabThickness;
+      secondSlabThicknessPoint2[0] -= slabThickness;
+      }
+
+    pipeline->ThicknessLine1Property->SetLineWidth(displayNode->GetLineWidth());
+    pipeline->ThicknessLine1Property->SetColor(intersectingSliceNode->GetLayoutColor());
+    pipeline->ThicknessLine2Property->SetLineWidth(displayNode->GetLineWidth());
+    pipeline->ThicknessLine2Property->SetColor(intersectingSliceNode->GetLayoutColor());
+
+    pipeline->ThicknessLine1->SetPoint1(firstSlabThicknessPoint1);
+    pipeline->ThicknessLine1->SetPoint2(firstSlabThicknessPoint2);
+    pipeline->ThicknessLine2->SetPoint1(secondSlabThicknessPoint1);
+    pipeline->ThicknessLine2->SetPoint2(secondSlabThicknessPoint2);
+
+    pipeline->SetThicknessVisibility(true);
+    }
+  else
+    {
+    pipeline->SetThicknessVisibility(false);
     }
 
   // Set interaction points
