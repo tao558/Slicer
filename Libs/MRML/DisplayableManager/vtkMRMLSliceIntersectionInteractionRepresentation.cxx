@@ -1557,20 +1557,25 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
     double secondSlabThicknessPoint2[4] = { intersectionLineTip2[0], intersectionLineTip2[1], intersectionLineTip2[2], 1 };
     double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness() / 2;
 
-    if (!vtkMathUtilities::FuzzyCompare<double>(intersectionLineTip1[0], intersectionLineTip2[0]))
-      {
-      firstSlabThicknessPoint1[1] += slabThickness;
-      firstSlabThicknessPoint2[1] += slabThickness;
-      secondSlabThicknessPoint1[1] -= slabThickness;
-      secondSlabThicknessPoint2[1] -= slabThickness;
-      }
-    else if (!vtkMathUtilities::FuzzyCompare<double>(intersectionLineTip1[1], intersectionLineTip2[1]))
-      {
-      firstSlabThicknessPoint1[0] += slabThickness;
-      firstSlabThicknessPoint2[0] += slabThickness;
-      secondSlabThicknessPoint1[0] -= slabThickness;
-      secondSlabThicknessPoint2[0] -= slabThickness;
-      }
+    // Find the angle of the intersection line
+    double ydiff = intersectionLineTip1[1] - intersectionLineTip2[1];
+    double xdiff = intersectionLineTip1[0] - intersectionLineTip2[0];
+    double angle = atan2(ydiff, xdiff); // In radians
+
+    // Find angle of the normal to the intersection line
+    double normalAngle = angle + M_PI_2;
+    double cosNormalAngle = cos(normalAngle);
+    double sinNormalAngle = sin(normalAngle);
+
+    // Translate the lines along the normal vector
+    firstSlabThicknessPoint1[0] += slabThickness * cosNormalAngle;
+    firstSlabThicknessPoint1[1] += slabThickness * sinNormalAngle;
+    firstSlabThicknessPoint2[0] += slabThickness * cosNormalAngle;
+    firstSlabThicknessPoint2[1] += slabThickness * sinNormalAngle;
+    secondSlabThicknessPoint1[0] -= slabThickness * cosNormalAngle;
+    secondSlabThicknessPoint1[1] -= slabThickness * sinNormalAngle;
+    secondSlabThicknessPoint2[0] -= slabThickness * cosNormalAngle;
+    secondSlabThicknessPoint2[1] -= slabThickness * sinNormalAngle;
 
     pipeline->ThicknessLine1Property->SetLineWidth(displayNode->GetLineWidth());
     pipeline->ThicknessLine1Property->SetColor(intersectingSliceNode->GetLayoutColor());
