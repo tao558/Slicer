@@ -96,7 +96,6 @@ public slots:
   void setIntersectingSlicesInteractive(bool);
   void setIntersectingSlicesRotationEnabled(bool);
   void setIntersectingSlicesTranslationEnabled(bool);
-  void setIntersectingSlicesThickSlabReconstructionEnabled(bool);
 
 public:
   vtkSmartPointer<vtkMRMLScene> MRMLScene;
@@ -137,7 +136,6 @@ public:
   QAction* IntersectingSlicesInteractiveAction{nullptr};
   QAction* IntersectingSlicesTranslationEnabledAction{nullptr};
   QAction* IntersectingSlicesRotationEnabledAction{nullptr};
-  QAction* IntersectingSlicesThickSlabReconstructionEnabledAction{nullptr};
   QMenu* IntersectingSlicesInteractionModesMenu{nullptr};
 
   ctkSignalMapper* SliceIntersectionsThicknessMapper{nullptr};

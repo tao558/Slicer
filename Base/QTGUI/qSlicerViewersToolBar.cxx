@@ -295,19 +295,10 @@ void qSlicerViewersToolBarPrivate::init()
   QObject::connect(this->IntersectingSlicesRotationEnabledAction, SIGNAL(triggered(bool)),
     this, SLOT(setIntersectingSlicesRotationEnabled(bool)));
 
-  this->IntersectingSlicesThickSlabReconstructionEnabledAction = new QAction(q);
-  this->IntersectingSlicesThickSlabReconstructionEnabledAction->setText(qSlicerViewersToolBar::tr("Slab Thickness"));
-  this->IntersectingSlicesThickSlabReconstructionEnabledAction->setToolTip(
-    qSlicerViewersToolBar::tr("Control visibility of slab thickness handles for slice intersection."));
-  this->IntersectingSlicesThickSlabReconstructionEnabledAction->setCheckable(true);
-  QObject::connect(this->IntersectingSlicesThickSlabReconstructionEnabledAction, SIGNAL(triggered(bool)),
-    this, SLOT(setIntersectingSlicesThickSlabReconstructionEnabled(bool)));
-
   this->IntersectingSlicesInteractionModesMenu = new QMenu();
   this->IntersectingSlicesInteractionModesMenu->setTitle(qSlicerViewersToolBar::tr("Interaction options"));
   this->IntersectingSlicesInteractionModesMenu->addAction(this->IntersectingSlicesTranslationEnabledAction);
   this->IntersectingSlicesInteractionModesMenu->addAction(this->IntersectingSlicesRotationEnabledAction);
-  this->IntersectingSlicesInteractionModesMenu->addAction(this->IntersectingSlicesThickSlabReconstructionEnabledAction);
 
   // Slice Intersections Menu
   this->SliceIntersectionsMenu = new QMenu(qSlicerViewersToolBar::tr("Slice intersections"), q);
@@ -505,17 +496,6 @@ void qSlicerViewersToolBarPrivate::setIntersectingSlicesTranslationEnabled(bool 
     return;
     }
   this->MRMLAppLogic->SetIntersectingSlicesEnabled(vtkMRMLApplicationLogic::IntersectingSlicesTranslation, visible);
-}
-
-// --------------------------------------------------------------------------
-void qSlicerViewersToolBarPrivate::setIntersectingSlicesThickSlabReconstructionEnabled(bool visible)
-{
-  if (!this->MRMLAppLogic)
-    {
-    qWarning() << Q_FUNC_INFO << " failed: application logic is invalid";
-    return;
-    }
-  this->MRMLAppLogic->SetIntersectingSlicesEnabled(vtkMRMLApplicationLogic::IntersectingSlicesThickSlabReconstruction, visible);
 }
 
 //---------------------------------------------------------------------------
