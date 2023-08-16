@@ -183,7 +183,7 @@ public:
   }
 
   //----------------------------------------------------------------------
-  void SetVisibility(bool visibility)
+  void SetIntersectionVisibility(bool visibility)
   {
     this->Actor->SetVisibility(visibility);
   }
@@ -196,9 +196,15 @@ public:
   }
 
   //----------------------------------------------------------------------
-  bool GetVisibility()
+  bool GetIntersectionVisibility()
   {
     return this->Actor->GetVisibility();
+  }
+
+  bool GetThicknessVisibility()
+  {
+    // Note: Assumes the first and second actors visibilities are equal
+    return this->FirstThicknessActor->GetVisibility();
   }
 
   vtkSmartPointer<vtkLineSource> LineSource;
@@ -459,10 +465,13 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     || this->Internal->SliceNode->GetViewGroup() != intersectingSliceNode->GetViewGroup()
     || !intersectingSliceNode->IsMappedInLayout())
     {
-    pipeline->SetVisibility(false);
+    pipeline->SetIntersectionVisibility(false);
+    pipeline->SetThicknessVisibility(false);
     return;
     }
 
+  bool showNonInteractiveSliceIntersection = false;
+  bool showNonInteractiveSlabReconstruction = false;
   vtkMRMLSliceDisplayNode* displayNode = nullptr;
   vtkMRMLSliceLogic *sliceLogic = nullptr;
   vtkMRMLApplicationLogic *mrmlAppLogic = this->GetMRMLApplicationLogic();
@@ -476,19 +485,21 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     }
   if (displayNode)
     {
-    bool showNonInteractiveSliceIntersection = (displayNode->GetIntersectingSlicesVisibility()
+    showNonInteractiveSliceIntersection = (displayNode->GetIntersectingSlicesVisibility()
       && !displayNode->GetIntersectingSlicesInteractive());
+    showNonInteractiveSlabReconstruction = (displayNode->GetIntersectingThickSlabVisibility()
+      && !displayNode->GetIntersectingThickSlabInteractive());
     if (!showNonInteractiveSliceIntersection)
       {
-      pipeline->SetVisibility(false);
-      pipeline->SetThicknessVisibility(false);
-      return;
+      pipeline->SetIntersectionVisibility(false);
       }
-    pipeline->Property->SetLineWidth(displayNode->GetLineWidth());
+    else
+      {
+      pipeline->Property->SetLineWidth(displayNode->GetLineWidth());
+      }
     }
 
-  pipeline->Property->SetColor(intersectingSliceNode->GetLayoutColor());
-
+  // We need to display something, so find the intersection
   vtkMatrix4x4* intersectingXYToRAS = intersectingSliceNode->GetXYToRAS();
   vtkMatrix4x4* xyToRAS = this->Internal->SliceNode->GetXYToRAS();
 
@@ -516,17 +527,21 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     intersectionPoint1, intersectionPoint2);
   if (!intersectionFound)
     {
-    pipeline->SetVisibility(false);
+    pipeline->SetIntersectionVisibility(false);
     pipeline->SetThicknessVisibility(false);
     return;
     }
 
-  pipeline->LineSource->SetPoint1(intersectionPoint1);
-  pipeline->LineSource->SetPoint2(intersectionPoint2);
+  // Intersection line
+  if (showNonInteractiveSliceIntersection)
+  {
+    pipeline->Property->SetColor(intersectingSliceNode->GetLayoutColor());
+    pipeline->LineSource->SetPoint1(intersectionPoint1);
+    pipeline->LineSource->SetPoint2(intersectionPoint2);
+    pipeline->SetIntersectionVisibility(true);
+  }
 
-  pipeline->SetVisibility(true);
-
-  if (intersectingSliceNode->GetSlabReconstructionEnabled())
+  if (showNonInteractiveSlabReconstruction)
     {
     double firstSlabThicknessPoint1[4] = { intersectionPoint1[0], intersectionPoint1[1], intersectionPoint1[2], intersectionPoint1[3] };
     double firstSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
@@ -534,20 +549,25 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     double secondSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };
     double slabThickness = intersectingSliceNode->GetSlabReconstructionThickness() / 2;
 
-    if (!vtkMathUtilities::FuzzyCompare<double>(intersectionPoint1[0], intersectionPoint2[0]))
-      {
-      firstSlabThicknessPoint1[1] += slabThickness;
-      firstSlabThicknessPoint2[1] += slabThickness;
-      secondSlabThicknessPoint1[1] -= slabThickness;
-      secondSlabThicknessPoint2[1] -= slabThickness;
-      }
-    else if (!vtkMathUtilities::FuzzyCompare<double>(intersectionPoint1[1], intersectionPoint2[1]))
-      {
-      firstSlabThicknessPoint1[0] += slabThickness;
-      firstSlabThicknessPoint2[0] += slabThickness;
-      secondSlabThicknessPoint1[0] -= slabThickness;
-      secondSlabThicknessPoint2[0] -= slabThickness;
-      }
+    // Find the angle of the intersection line
+    double ydiff = intersectionPoint1[1] - intersectionPoint2[1];
+    double xdiff = intersectionPoint1[0] - intersectionPoint2[0];
+    double angle = atan2(ydiff, xdiff); // In radians
+
+    // Find angle of the normal to the intersection line
+    double normalAngle = angle + M_PI_2;
+    double cosNormalAngle = cos(normalAngle);
+    double sinNormalAngle = sin(normalAngle);
+
+    // Translate the lines along the normal vector
+    firstSlabThicknessPoint1[0] += slabThickness * cosNormalAngle;
+    firstSlabThicknessPoint1[1] += slabThickness * sinNormalAngle;
+    firstSlabThicknessPoint2[0] += slabThickness * cosNormalAngle;
+    firstSlabThicknessPoint2[1] += slabThickness * sinNormalAngle;
+    secondSlabThicknessPoint1[0] -= slabThickness * cosNormalAngle;
+    secondSlabThicknessPoint1[1] -= slabThickness * sinNormalAngle;
+    secondSlabThicknessPoint2[0] -= slabThickness * cosNormalAngle;
+    secondSlabThicknessPoint2[1] -= slabThickness * sinNormalAngle;
 
     pipeline->FirstThicknessProperty->SetLineWidth(displayNode->GetLineWidth());
     pipeline->FirstThicknessProperty->SetColor(intersectingSliceNode->GetLayoutColor());
@@ -691,7 +711,7 @@ double* vtkMRMLSliceIntersectionRepresentation2D::GetSliceIntersectionPoint()
     }
   for (size_t slice1Index = 0; slice1Index < numberOfIntersections - 1; slice1Index++)
     {
-    if (!this->Internal->SliceIntersectionDisplayPipelines[slice1Index]->GetVisibility())
+    if (!this->Internal->SliceIntersectionDisplayPipelines[slice1Index]->GetIntersectionVisibility())
       {
       continue;
       }
@@ -700,7 +720,7 @@ double* vtkMRMLSliceIntersectionRepresentation2D::GetSliceIntersectionPoint()
     double* line1Point2 = line1->GetPoint2();
     for (size_t slice2Index = slice1Index + 1; slice2Index < numberOfIntersections; slice2Index++)
       {
-      if (!this->Internal->SliceIntersectionDisplayPipelines[slice2Index]->GetVisibility())
+      if (!this->Internal->SliceIntersectionDisplayPipelines[slice2Index]->GetIntersectionVisibility())
         {
         continue;
         }
@@ -758,7 +778,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::TransformIntersectingSlices(vtkMa
     sliceIntersectionIt != this->Internal->SliceIntersectionDisplayPipelines.end(); ++sliceIntersectionIt)
     {
     if (!(*sliceIntersectionIt)
-      || !(*sliceIntersectionIt)->GetVisibility())
+      || !(*sliceIntersectionIt)->GetIntersectionVisibility())
       {
       continue;
       }
@@ -776,7 +796,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::TransformIntersectingSlices(vtkMa
     sliceIntersectionIt != this->Internal->SliceIntersectionDisplayPipelines.end(); ++sliceIntersectionIt)
     {
     if (!(*sliceIntersectionIt)
-      || !(*sliceIntersectionIt)->GetVisibility())
+      || !(*sliceIntersectionIt)->GetIntersectionVisibility())
       {
       continue;
       }

@@ -55,11 +55,28 @@ public:
   //@}
 
   //@{
+  /// Toggles visibility of thick slabs of other slices in the slice viewer
+  vtkGetMacro(IntersectingThickSlabVisibility, bool);
+  vtkSetMacro(IntersectingThickSlabVisibility, bool);
+  vtkBooleanMacro(IntersectingThickSlabVisibility, bool);
+  //@}
+
+
+  //@{
   /// Toggles interaction with slice intersections
   vtkGetMacro(IntersectingSlicesInteractive, bool);
   vtkSetMacro(IntersectingSlicesInteractive, bool);
   vtkBooleanMacro(IntersectingSlicesInteractive, bool);
   //@}
+
+
+  //@{
+  /// Toggles interaction with thick slab reconstruction
+  vtkGetMacro(IntersectingThickSlabInteractive, bool);
+  vtkSetMacro(IntersectingThickSlabInteractive, bool);
+  vtkBooleanMacro(IntersectingThickSlabInteractive, bool);
+  //@}
+
 
   //@{
   /// Enable/disable interaction handles
@@ -69,16 +86,12 @@ public:
   vtkGetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkSetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkBooleanMacro(IntersectingSlicesRotationEnabled, bool);
-  vtkGetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
-  vtkSetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
-  vtkBooleanMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
   //@}
 
   enum IntersectingSlicesInteractiveMode
   {
     ModeRotation,
     ModeTranslation,
-    ModeThickSlabReconstuction
   };
 
   //@{
@@ -207,6 +220,8 @@ protected:
     int Index;
     };
 
+  bool IntersectingThickSlabVisibility{ false };
+  bool IntersectingThickSlabInteractive{ false };
   bool IntersectingSlicesInteractive{ false };
   bool IntersectingSlicesTranslationEnabled{ true };
   bool IntersectingSlicesRotationEnabled{ true };

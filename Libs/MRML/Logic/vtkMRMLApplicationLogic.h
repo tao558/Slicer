@@ -259,7 +259,6 @@ public:
     IntersectingSlicesInteractive,
     IntersectingSlicesTranslation,
     IntersectingSlicesRotation,
-    IntersectingSlicesThickSlabReconstruction,
   };
 
   void SetIntersectingSlicesEnabled(IntersectingSlicesOperation operation, bool enabled);
