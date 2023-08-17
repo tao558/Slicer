@@ -242,6 +242,8 @@ void qMRMLSliceControllerWidgetPrivate::setupPopupUi()
 
   QObject::connect(this->actionShow_slab_reconstruction_widget, SIGNAL(toggled(bool)),
                    q, SLOT(showSlabReconstructionWidget(bool)));
+  QObject::connect(this->actionSlabReconstructionInteractive, SIGNAL(toggled(bool)),
+                   q, SLOT(toggleSlabReconstructionInteractive(bool)));
 
   this->setupLightboxMenu();
   this->setupCompositingMenu();
@@ -919,7 +921,15 @@ void qMRMLSliceControllerWidgetPrivate::updateWidgetFromMRMLSliceNode()
     showReformat ? tr("Hide reformat widget"): tr("Show reformat widget"));
   // Reconstruction
   bool showSlabReconstruction = sliceNode->GetSlabReconstructionEnabled();
+  bool slabReconstructionInteractive = false;
+  vtkMRMLSliceDisplayNode* displayNode = this->SliceLogic->GetSliceDisplayNode();
+  if (displayNode)
+    {
+      slabReconstructionInteractive = displayNode->GetIntersectingThickSlabInteractive();
+    }
+
   this->actionShow_slab_reconstruction_widget->setChecked(showSlabReconstruction);
+  this->actionSlabReconstructionInteractive->setChecked(slabReconstructionInteractive);
   this->SlabReconstructionThicknessSpinBox->setValue(sliceNode->GetSlabReconstructionThickness());
   // Slice spacing mode
   this->SliceSpacingButton->setIcon(
@@ -1584,6 +1594,9 @@ void qMRMLSliceControllerWidgetPrivate::setupSlabReconstructionMenu()
   this->SlabReconstructionMenu = new QMenu(tr("Slab Reconstruction"), this->ShowSlabReconstructionButton);
   this->SlabReconstructionMenu->addAction(this->actionShow_slab_reconstruction_widget);
   this->SlabReconstructionMenu->setObjectName("slabMenu");
+
+  // Make thick slab lines interactive
+  this->SlabReconstructionMenu->addAction(this->actionSlabReconstructionInteractive);
 
   // Slab Reconstruction Thickness
   QMenu* slabReconstructionThickness = new QMenu(tr("Slab Thickness"), this->ShowSlabReconstructionButton);
@@ -2405,6 +2418,35 @@ void qMRMLSliceControllerWidget::showSlabReconstructionWidget(bool show)
         }
       }
     }
+}
+
+void qMRMLSliceControllerWidget::toggleSlabReconstructionInteractive(bool interactive)
+{
+  Q_D(qMRMLSliceControllerWidget);
+
+  vtkSmartPointer<vtkCollection> nodes = d->saveNodesForUndo("vtkMRMLSliceNode");
+  if (!nodes.GetPointer())
+    {
+    return;
+    }
+  vtkMRMLSliceNode* node = nullptr;
+  vtkCollectionSimpleIterator it;
+  for (nodes->InitTraversal(it);(node = static_cast<vtkMRMLSliceNode*>(nodes->GetNextItemAsObject(it)));)
+    {
+    if (node == this->mrmlSliceNode() || this->isLinked())
+      {
+      vtkMRMLSliceLogic* sliceLogic = this->sliceLogic();
+      if (sliceLogic)
+        {
+        vtkMRMLSliceDisplayNode* displayNode = sliceLogic->GetSliceDisplayNode();
+        if (displayNode)
+          {
+          displayNode->SetIntersectingThickSlabInteractive(interactive);
+          }
+        }
+      }
+    }
+
 }
 
 //---------------------------------------------------------------------------
