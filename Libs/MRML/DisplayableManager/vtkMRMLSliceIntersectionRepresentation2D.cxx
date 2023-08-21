@@ -471,7 +471,6 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     }
 
   bool showNonInteractiveSliceIntersection = false;
-  bool showNonInteractiveSlabReconstruction = false;
   vtkMRMLSliceDisplayNode* displayNode = nullptr;
   vtkMRMLSliceLogic *sliceLogic = nullptr;
   vtkMRMLApplicationLogic *mrmlAppLogic = this->GetMRMLApplicationLogic();
@@ -487,8 +486,6 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     {
     showNonInteractiveSliceIntersection = (displayNode->GetIntersectingSlicesVisibility()
       && !displayNode->GetIntersectingSlicesInteractive());
-    showNonInteractiveSlabReconstruction = (displayNode->GetIntersectingThickSlabVisibility()
-      && !displayNode->GetIntersectingThickSlabInteractive());
     if (!showNonInteractiveSliceIntersection)
       {
       pipeline->SetIntersectionVisibility(false);
@@ -541,7 +538,7 @@ void vtkMRMLSliceIntersectionRepresentation2D::UpdateSliceIntersectionDisplay(Sl
     pipeline->SetIntersectionVisibility(true);
   }
 
-  if (showNonInteractiveSlabReconstruction)
+  if (displayNode->GetIntersectingThickSlabVisibility())
     {
     double firstSlabThicknessPoint1[4] = { intersectionPoint1[0], intersectionPoint1[1], intersectionPoint1[2], intersectionPoint1[3] };
     double firstSlabThicknessPoint2[4] = { intersectionPoint2[0], intersectionPoint2[1], intersectionPoint2[2], intersectionPoint2[3] };

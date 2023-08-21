@@ -86,6 +86,9 @@ public:
   vtkGetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkSetMacro(IntersectingSlicesRotationEnabled, bool);
   vtkBooleanMacro(IntersectingSlicesRotationEnabled, bool);
+  vtkGetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
+  vtkSetMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
+  vtkBooleanMacro(IntersectingSlicesThickSlabReconstructionEnabled, bool);
   //@}
 
   enum IntersectingSlicesInteractiveMode
@@ -175,6 +178,7 @@ public:
     ComponentRotateIntersectingSlicesHandle, ///< mouse is near the end of the slice intersection (rotation section)
     ComponentTranslateSingleIntersectingSliceHandle, ///< mouse is near the middle of the slice intersection (translation section)
     ComponentSliceIntersection, ///< slice intersection is active (not any handle), e.g., because user is interacting with the widget
+    ComponentTSRTranslateHandle, ///< mouse is near the handle for adjusting a thick slab
     Component_Last
   };
 

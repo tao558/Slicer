@@ -102,6 +102,12 @@ static const double SLICEOFFSET_HANDLE_CIRCLE_RADIUS = 7.0;
 static const double SLICEOFFSET_HANDLE_ARROW_RADIUS = 3.0;
 static const double SLICEOFFSET_HANDLE_ARROW_LENGTH = 60.0;
 static const double SLICEOFFSET_HANDLE_ARROW_TIP_ANGLE = 27; // degrees
+static const double TSR_TRANSLATION_HANDLE_DEFAULT_POSITION[3] = { 0.0,0.0,0.0 };
+static const double TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[3] = { 0.0,1.0,0.0 };
+static const double TSR_TRANSLATION_HANDLE_CIRCLE_RADIUS = 7.0;
+static const double TSR_TRANSLATION_HANDLE_ARROW_RADIUS = 3.0;
+static const double TSR_TRANSLATION_HANDLE_ARROW_LENGTH = 60.0;
+static const double TSR_TRANSLATION_HANDLE_ARROW_TIP_ANGLE = 27; // degrees
 static const double ROTATION_HANDLE_DEFAULT_POSITION[3] = { 0.0,0.0,0.0 };
 static const double ROTATION_HANDLE_DEFAULT_ORIENTATION[3] = { 0.0,1.0,0.0 };
 static const double ROTATION_HANDLE_CIRCLE_RADIUS = 10.0;
@@ -198,7 +204,9 @@ class SliceIntersectionInteractionDisplayPipeline
       // Initialize handles
       this->CreateRotationHandles();
       this->CreateSliceOffsetHandles();
+      this->CreateTSRTranslationHandles();
       this->SetHandlesVisibility(false);
+      this->SetTSRHandlesVisibility(false);
       this->NeedToRender = true;
 
       // Handle points
@@ -630,6 +638,192 @@ class SliceIntersectionInteractionDisplayPipeline
         this->SliceOffsetHandle2Points->InsertNextPoint(handleOriginDefault);
         }
     }
+    void CreateTSRTranslationHandles()
+    {
+      // Create list of points to store position of handles
+      this->TSRTranslationHandle1Points = vtkSmartPointer<vtkPoints>::New();
+      this->TSRTranslationHandle1Points = vtkSmartPointer<vtkPoints>::New();
+
+      // We don't know if there is enough space, will set it later.
+      this->TSRTranslationHandles1Displayable = false;
+      this->TSRTranslationHandles2Displayable = false;
+
+      // Handle default position and orientation
+      double handleOriginDefault[3] = { TSR_TRANSLATION_HANDLE_DEFAULT_POSITION[0],
+                                        TSR_TRANSLATION_HANDLE_DEFAULT_POSITION[1],
+                                        TSR_TRANSLATION_HANDLE_DEFAULT_POSITION[2] };
+      double handleOrientationDefault[3] = { TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[0],
+                                             TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[1],
+                                             TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[2] };
+      double handleOrientationDefaultInv[3] = { -TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[0],
+                                                -TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[1],
+                                                -TSR_TRANSLATION_HANDLE_DEFAULT_ORIENTATION[2] };
+
+      if (HANDLES_TYPE == Arrows)
+        {
+        // Define cone size
+        double coneAngleRad = (TSR_TRANSLATION_HANDLE_ARROW_TIP_ANGLE * M_PI) / 180.0;
+        double coneRadius = 2 * TSR_TRANSLATION_HANDLE_ARROW_RADIUS;
+        double coneLength = coneRadius / tan(coneAngleRad);
+
+        // Define cylinder size
+        double cylinderLength = TSR_TRANSLATION_HANDLE_ARROW_LENGTH - coneLength * 2;
+
+        // Define cone positions to construct arrows
+        double coneCenterR[3] = { handleOrientationDefault[0], handleOrientationDefault[1], handleOrientationDefault[2] };
+        vtkMath::MultiplyScalar(coneCenterR, cylinderLength / 2 + coneLength / 2);
+        double coneTipR[3] = { handleOrientationDefault[0], handleOrientationDefault[1], handleOrientationDefault[2] };
+        vtkMath::MultiplyScalar(coneTipR, cylinderLength / 2 + coneLength);
+        double coneBaseR[3] = { handleOrientationDefault[0], handleOrientationDefault[1], handleOrientationDefault[2] };
+        vtkMath::MultiplyScalar(coneBaseR, cylinderLength / 2);
+        double coneCenterL[3] = { handleOrientationDefaultInv[0], handleOrientationDefaultInv[1], handleOrientationDefaultInv[2] };
+        vtkMath::MultiplyScalar(coneCenterL, cylinderLength / 2 + coneLength / 2);
+        double coneTipL[3] = { handleOrientationDefaultInv[0], handleOrientationDefaultInv[1], handleOrientationDefaultInv[2] };
+        vtkMath::MultiplyScalar(coneTipL, cylinderLength / 2 + coneLength);
+        double coneBaseL[3] = { handleOrientationDefaultInv[0], handleOrientationDefaultInv[1], handleOrientationDefaultInv[2] };
+        vtkMath::MultiplyScalar(coneBaseL, cylinderLength / 2);
+
+        // Translation handle 1
+        vtkNew<vtkLineSource> TSRTranslationHandle1LineSource;
+        TSRTranslationHandle1LineSource->SetResolution(50);
+        TSRTranslationHandle1LineSource->SetPoint1(coneBaseR);
+        TSRTranslationHandle1LineSource->SetPoint2(coneBaseL);
+        vtkNew<vtkTubeFilter> TSRTranslationHandle1LineTubeFilter;
+        TSRTranslationHandle1LineTubeFilter->SetInputConnection(TSRTranslationHandle1LineSource->GetOutputPort());
+        TSRTranslationHandle1LineTubeFilter->SetRadius(TSR_TRANSLATION_HANDLE_ARROW_RADIUS);
+        TSRTranslationHandle1LineTubeFilter->SetNumberOfSides(16);
+        TSRTranslationHandle1LineTubeFilter->SetCapping(true);
+        vtkNew<vtkConeSource> TSRTranslationHandle1RightConeSource;
+        TSRTranslationHandle1RightConeSource->SetResolution(50);
+        TSRTranslationHandle1RightConeSource->SetRadius(coneRadius);
+        TSRTranslationHandle1RightConeSource->SetDirection(handleOrientationDefault);
+        TSRTranslationHandle1RightConeSource->SetHeight(coneLength);
+        TSRTranslationHandle1RightConeSource->SetCenter(coneCenterR);
+        vtkNew<vtkConeSource> TSRTranslationHandle1LeftConeSource;
+        TSRTranslationHandle1LeftConeSource->SetResolution(50);
+        TSRTranslationHandle1LeftConeSource->SetRadius(coneRadius);
+        TSRTranslationHandle1LeftConeSource->SetDirection(handleOrientationDefaultInv);
+        TSRTranslationHandle1LeftConeSource->SetHeight(coneLength);
+        TSRTranslationHandle1LeftConeSource->SetCenter(coneCenterL);
+        this->TSRTranslationHandle1 = vtkSmartPointer<vtkAppendPolyData>::New();
+        this->TSRTranslationHandle1->AddInputConnection(TSRTranslationHandle1LineTubeFilter->GetOutputPort());
+        this->TSRTranslationHandle1->AddInputConnection(TSRTranslationHandle1RightConeSource->GetOutputPort());
+        this->TSRTranslationHandle1->AddInputConnection(TSRTranslationHandle1LeftConeSource->GetOutputPort());
+        this->TSRTranslationHandle1ToWorldTransform = vtkSmartPointer<vtkTransform>::New();
+        this->TSRTranslationHandle1TransformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        this->TSRTranslationHandle1TransformFilter->SetInputConnection(this->TSRTranslationHandle1->GetOutputPort());
+        this->TSRTranslationHandle1TransformFilter->SetTransform(this->TSRTranslationHandle1ToWorldTransform);
+        this->TSRTranslationHandle1Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+        this->TSRTranslationHandle1Property = vtkSmartPointer<vtkProperty2D>::New();
+        this->TSRTranslationHandle1Actor = vtkSmartPointer<vtkActor2D>::New();
+        this->TSRTranslationHandle1Actor->SetVisibility(false); // invisible until slice node is set
+        this->TSRTranslationHandle1Mapper->SetInputConnection(this->TSRTranslationHandle1TransformFilter->GetOutputPort());
+        this->TSRTranslationHandle1Actor->SetMapper(this->TSRTranslationHandle1Mapper);
+        this->TSRTranslationHandle1Actor->SetProperty(this->TSRTranslationHandle1Property);
+
+        // Translation handle 2
+        vtkNew<vtkLineSource> TSRTranslationHandle2LineSource;
+        TSRTranslationHandle2LineSource->SetResolution(50);
+        TSRTranslationHandle2LineSource->SetPoint1(coneBaseR);
+        TSRTranslationHandle2LineSource->SetPoint2(coneBaseL);
+        vtkNew<vtkTubeFilter> TSRTranslationHandle2LineTubeFilter;
+        TSRTranslationHandle2LineTubeFilter->SetInputConnection(TSRTranslationHandle2LineSource->GetOutputPort());
+        TSRTranslationHandle2LineTubeFilter->SetRadius(TSR_TRANSLATION_HANDLE_ARROW_RADIUS);
+        TSRTranslationHandle2LineTubeFilter->SetNumberOfSides(16);
+        TSRTranslationHandle2LineTubeFilter->SetCapping(true);
+        vtkNew<vtkConeSource> TSRTranslationHandle2RightConeSource;
+        TSRTranslationHandle2RightConeSource->SetResolution(50);
+        TSRTranslationHandle2RightConeSource->SetRadius(coneRadius);
+        TSRTranslationHandle2RightConeSource->SetDirection(handleOrientationDefault);
+        TSRTranslationHandle2RightConeSource->SetHeight(coneLength);
+        TSRTranslationHandle2RightConeSource->SetCenter(coneCenterR);
+        vtkNew<vtkConeSource> TSRTranslationHandle2LeftConeSource;
+        TSRTranslationHandle2LeftConeSource->SetResolution(50);
+        TSRTranslationHandle2LeftConeSource->SetRadius(coneRadius);
+        TSRTranslationHandle2LeftConeSource->SetDirection(handleOrientationDefaultInv);
+        TSRTranslationHandle2LeftConeSource->SetHeight(coneLength);
+        TSRTranslationHandle2LeftConeSource->SetCenter(coneCenterL);
+        this->TSRTranslationHandle2 = vtkSmartPointer<vtkAppendPolyData>::New();
+        this->TSRTranslationHandle2->AddInputConnection(TSRTranslationHandle2LineTubeFilter->GetOutputPort());
+        this->TSRTranslationHandle2->AddInputConnection(TSRTranslationHandle2RightConeSource->GetOutputPort());
+        this->TSRTranslationHandle2->AddInputConnection(TSRTranslationHandle2LeftConeSource->GetOutputPort());
+        this->TSRTranslationHandle2ToWorldTransform = vtkSmartPointer<vtkTransform>::New();
+        this->TSRTranslationHandle2TransformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        this->TSRTranslationHandle2TransformFilter->SetInputConnection(this->TSRTranslationHandle2->GetOutputPort());
+        this->TSRTranslationHandle2TransformFilter->SetTransform(this->TSRTranslationHandle2ToWorldTransform);
+        this->TSRTranslationHandle2Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+        this->TSRTranslationHandle2Property = vtkSmartPointer<vtkProperty2D>::New();
+        this->TSRTranslationHandle2Actor = vtkSmartPointer<vtkActor2D>::New();
+        this->TSRTranslationHandle2Actor->SetVisibility(false); // invisible until slice node is set
+        this->TSRTranslationHandle2Mapper->SetInputConnection(this->TSRTranslationHandle2TransformFilter->GetOutputPort());
+        this->TSRTranslationHandle2Actor->SetMapper(this->TSRTranslationHandle2Mapper);
+        this->TSRTranslationHandle2Actor->SetProperty(this->TSRTranslationHandle2Property);
+
+        // Handle points
+        this->TSRTranslationHandle1Points->InsertNextPoint(handleOriginDefault);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneTipR);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneCenterR);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneBaseR);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneTipL);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneCenterL);
+        this->TSRTranslationHandle1Points->InsertNextPoint(coneBaseL);
+        this->TSRTranslationHandle2Points->InsertNextPoint(handleOriginDefault);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneTipR);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneCenterR);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneBaseR);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneTipL);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneCenterL);
+        this->TSRTranslationHandle2Points->InsertNextPoint(coneBaseL);
+        }
+      else if (HANDLES_TYPE == Circles)
+        {
+        // Translation sphere 1
+        vtkNew<vtkSphereSource> TSRTranslationHandle1SphereSource;
+        TSRTranslationHandle1SphereSource->SetRadius(TSR_TRANSLATION_HANDLE_CIRCLE_RADIUS);
+        TSRTranslationHandle1SphereSource->SetThetaResolution(HANDLES_CIRCLE_THETA_RESOLUTION);
+        TSRTranslationHandle1SphereSource->SetPhiResolution(HANDLES_CIRCLE_PHI_RESOLUTION);
+        TSRTranslationHandle1SphereSource->SetCenter(handleOriginDefault);
+        TSRTranslationHandle1SphereSource->Update();
+        this->TSRTranslationHandle1 = vtkSmartPointer<vtkAppendPolyData>::New();
+        this->TSRTranslationHandle1->AddInputConnection(TSRTranslationHandle1SphereSource->GetOutputPort());
+        this->TSRTranslationHandle1ToWorldTransform = vtkSmartPointer<vtkTransform>::New();
+        this->TSRTranslationHandle1TransformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        this->TSRTranslationHandle1TransformFilter->SetInputConnection(this->TSRTranslationHandle1->GetOutputPort());
+        this->TSRTranslationHandle1TransformFilter->SetTransform(this->TSRTranslationHandle1ToWorldTransform);
+        this->TSRTranslationHandle1Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+        this->TSRTranslationHandle1Property = vtkSmartPointer<vtkProperty2D>::New();
+        this->TSRTranslationHandle1Actor = vtkSmartPointer<vtkActor2D>::New();
+        this->TSRTranslationHandle1Actor->SetVisibility(false); // invisible until slice node is set
+        this->TSRTranslationHandle1Mapper->SetInputConnection(this->TSRTranslationHandle1TransformFilter->GetOutputPort());
+        this->TSRTranslationHandle1Actor->SetMapper(this->TSRTranslationHandle1Mapper);
+        this->TSRTranslationHandle1Actor->SetProperty(this->TSRTranslationHandle1Property);
+
+        // Translation sphere 2
+        vtkNew<vtkSphereSource> TSRTranslationHandle2SphereSource;
+        TSRTranslationHandle2SphereSource->SetRadius(TSR_TRANSLATION_HANDLE_CIRCLE_RADIUS);
+        TSRTranslationHandle2SphereSource->SetThetaResolution(HANDLES_CIRCLE_THETA_RESOLUTION);
+        TSRTranslationHandle2SphereSource->SetPhiResolution(HANDLES_CIRCLE_PHI_RESOLUTION);
+        TSRTranslationHandle2SphereSource->SetCenter(handleOriginDefault);
+        TSRTranslationHandle2SphereSource->Update();
+        this->TSRTranslationHandle2 = vtkSmartPointer<vtkAppendPolyData>::New();
+        this->TSRTranslationHandle2->AddInputConnection(TSRTranslationHandle2SphereSource->GetOutputPort());
+        this->TSRTranslationHandle2ToWorldTransform = vtkSmartPointer<vtkTransform>::New();
+        this->TSRTranslationHandle2TransformFilter = vtkSmartPointer<vtkTransformPolyDataFilter>::New();
+        this->TSRTranslationHandle2TransformFilter->SetInputConnection(this->TSRTranslationHandle2->GetOutputPort());
+        this->TSRTranslationHandle2TransformFilter->SetTransform(this->TSRTranslationHandle2ToWorldTransform);
+        this->TSRTranslationHandle2Mapper = vtkSmartPointer<vtkPolyDataMapper2D>::New();
+        this->TSRTranslationHandle2Property = vtkSmartPointer<vtkProperty2D>::New();
+        this->TSRTranslationHandle2Actor = vtkSmartPointer<vtkActor2D>::New();
+        this->TSRTranslationHandle2Actor->SetVisibility(false); // invisible until slice node is set
+        this->TSRTranslationHandle2Mapper->SetInputConnection(this->TSRTranslationHandle2TransformFilter->GetOutputPort());
+        this->TSRTranslationHandle2Actor->SetMapper(this->TSRTranslationHandle2Mapper);
+        this->TSRTranslationHandle2Actor->SetProperty(this->TSRTranslationHandle2Property);
+
+        // Handle points
+        this->TSRTranslationHandle1Points->InsertNextPoint(handleOriginDefault);
+        this->TSRTranslationHandle2Points->InsertNextPoint(handleOriginDefault);
+        }
+    }
 
     //----------------------------------------------------------------------
     void SetAndObserveSliceLogic(vtkMRMLSliceLogic* sliceLogic, vtkCallbackCommand* callback)
@@ -822,6 +1016,21 @@ class SliceIntersectionInteractionDisplayPipeline
       }
 
     //----------------------------------------------------------------------
+    void SetTSRHandlesVisibility(bool visibility)
+    {
+      bool TSRTranslationHandle1Visible = visibility && this->TSRTranslationHandlesVisible && this->TSRTranslationHandles1Displayable;
+      bool TSRTranslationHandle2Visible = visibility && this->TSRTranslationHandlesVisible && this->TSRTranslationHandles2Displayable;
+
+      if (static_cast<bool>(this->TSRTranslationHandle1Actor->GetVisibility()) != TSRTranslationHandle1Visible
+        || static_cast<bool>(this->TSRTranslationHandle2Actor->GetVisibility()) != TSRTranslationHandle2Visible)
+        {
+        this->NeedToRender = true;
+        }
+      this->TSRTranslationHandle1Actor->SetVisibility(TSRTranslationHandle1Visible);
+      this->TSRTranslationHandle2Actor->SetVisibility(TSRTranslationHandle2Visible);
+    }
+
+    //----------------------------------------------------------------------
     void SetHandlesOpacity(double opacity)
       {
       this->TranslationOuterHandleProperty->SetOpacity(opacity);
@@ -895,24 +1104,44 @@ class SliceIntersectionInteractionDisplayPipeline
     vtkSmartPointer<vtkProperty2D> SliceOffsetHandle2Property;
     vtkSmartPointer<vtkActor2D> SliceOffsetHandle2Actor;
 
+    vtkSmartPointer<vtkAppendPolyData> TSRTranslationHandle1;
+    vtkSmartPointer<vtkTransform> TSRTranslationHandle1ToWorldTransform;
+    vtkSmartPointer<vtkTransformPolyDataFilter> TSRTranslationHandle1TransformFilter;
+    vtkSmartPointer<vtkPolyDataMapper2D> TSRTranslationHandle1Mapper;
+    vtkSmartPointer<vtkProperty2D> TSRTranslationHandle1Property;
+    vtkSmartPointer<vtkActor2D> TSRTranslationHandle1Actor;
+
+    vtkSmartPointer<vtkAppendPolyData> TSRTranslationHandle2;
+    vtkSmartPointer<vtkTransform> TSRTranslationHandle2ToWorldTransform;
+    vtkSmartPointer<vtkTransformPolyDataFilter> TSRTranslationHandle2TransformFilter;
+    vtkSmartPointer<vtkPolyDataMapper2D> TSRTranslationHandle2Mapper;
+    vtkSmartPointer<vtkProperty2D> TSRTranslationHandle2Property;
+    vtkSmartPointer<vtkActor2D> TSRTranslationHandle2Actor;
+
     vtkWeakPointer<vtkMRMLSliceLogic> SliceLogic;
     vtkWeakPointer<vtkCallbackCommand> Callback;
 
     vtkSmartPointer<vtkPolyData> RotationHandlePoints;
     vtkSmartPointer<vtkPolyData> TranslationHandlePoints;
     vtkSmartPointer<vtkPolyData> SliceOffsetHandlePoints;
+    vtkSmartPointer<vtkPolyData> TSRTranslationHandlePoints;
 
     vtkSmartPointer<vtkPoints> SliceOffsetHandle1Points;
     vtkSmartPointer<vtkPoints> SliceOffsetHandle2Points;
     vtkSmartPointer<vtkPoints> RotationHandle1Points;
     vtkSmartPointer<vtkPoints> RotationHandle2Points;
+    vtkSmartPointer<vtkPoints> TSRTranslationHandle1Points;
+    vtkSmartPointer<vtkPoints> TSRTranslationHandle2Points;
 
     bool SliceOffsetHandle1Displayable = false;
     bool SliceOffsetHandle2Displayable = false;
     bool RotationHandle1Displayable = false;
     bool RotationHandle2Displayable = false;
+    bool TSRTranslationHandles1Displayable = false;
+    bool TSRTranslationHandles2Displayable = false;
     bool RotationHandlesVisible = false;
     bool TranslationHandlesVisible = false;
+    bool TSRTranslationHandlesVisible = false;
     int  HandlesVisibilityMode = vtkMRMLSliceDisplayNode::NeverVisible;
     int  SliceIntersectionMode = vtkMRMLSliceDisplayNode::SkipLineCrossings;
     // Indicates that this representation has changed and thus re-rendering is needed
@@ -1113,15 +1342,12 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
     }
 
   bool sliceInteractionHandlesInteractive = false;
-  bool showInteractiveSlabReconstruction = false;
   // Set properties of slice intersection lines
   vtkMRMLSliceDisplayNode* displayNode = this->GetSliceDisplayNode(intersectingSliceNode);
   if (displayNode)
     {
     sliceInteractionHandlesInteractive =
       (displayNode->GetIntersectingSlicesVisibility() && displayNode->GetIntersectingSlicesInteractive());
-    showInteractiveSlabReconstruction =
-      (displayNode->GetIntersectingThickSlabVisibility() && displayNode->GetIntersectingThickSlabInteractive());
     if (!sliceInteractionHandlesInteractive)
       {
       pipeline->SetIntersectionsVisibility(false);
@@ -1144,6 +1370,22 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
         this->GetLineThicknessFromMode(displayNode->GetIntersectingSlicesLineThicknessMode()));
       pipeline->IntersectionLine2Property->SetLineWidth(
         this->GetLineThicknessFromMode(displayNode->GetIntersectingSlicesLineThicknessMode()));
+      }
+
+    bool thickSlabHandlesInteractive =
+      (displayNode->GetIntersectingThickSlabVisibility() && displayNode->GetIntersectingThickSlabInteractive());
+    if (!thickSlabHandlesInteractive)
+      {
+      pipeline->SetThicknessVisibility(false);
+      pipeline->SetTSRHandlesVisibility(false);
+      if (pipeline->NeedToRender)
+        {
+        this->NeedToRenderOn();
+        }
+      }
+    else
+      {
+      pipeline->TSRTranslationHandlesVisible = displayNode->GetIntersectingSlicesThickSlabReconstructionEnabled();
       }
     }
 
@@ -1568,7 +1810,7 @@ void vtkMRMLSliceIntersectionInteractionRepresentation::UpdateSliceIntersectionD
     pipeline->SetIntersectionsVisibility(false);
     }
 
-  if (showInteractiveSlabReconstruction)
+  if (displayNode->GetIntersectingThickSlabVisibility())
     {
     double firstSlabThicknessPoint1[4] = { intersectionLineTip1[0], intersectionLineTip1[1], intersectionLineTip1[2], 1 };
     double firstSlabThicknessPoint2[4] = { intersectionLineTip2[0], intersectionLineTip2[1], intersectionLineTip2[2], 1 };
@@ -1964,11 +2206,13 @@ std::string vtkMRMLSliceIntersectionInteractionRepresentation::CanInteract(vtkMR
 
   bool intersectingSlicesTranslationEnabled = true;
   bool intersectingSlicesRotationEnabled = true;
+  bool IntersectingSlicesThickSlabReconstructionEnabled = true;
   vtkMRMLSliceDisplayNode* sliceDisplayNode = this->GetSliceDisplayNode();
   if (sliceDisplayNode)
     {
     intersectingSlicesTranslationEnabled = sliceDisplayNode->GetIntersectingSlicesTranslationEnabled();
     intersectingSlicesRotationEnabled = sliceDisplayNode->GetIntersectingSlicesRotationEnabled();
+    IntersectingSlicesThickSlabReconstructionEnabled = sliceDisplayNode->GetIntersectingSlicesThickSlabReconstructionEnabled();
     }
 
   for (std::deque<SliceIntersectionInteractionDisplayPipeline*>::iterator
@@ -2003,6 +2247,12 @@ std::string vtkMRMLSliceIntersectionInteractionRepresentation::CanInteract(vtkMR
           }
         if (!intersectingSlicesRotationEnabled
           && handleInfo.ComponentType == vtkMRMLSliceDisplayNode::ComponentRotateIntersectingSlicesHandle)
+          {
+          // rotation is disabled and this is a translation handle
+          continue;
+          }
+        if (!IntersectingSlicesThickSlabReconstructionEnabled
+          && handleInfo.ComponentType == vtkMRMLSliceDisplayNode::ComponentTSRTranslateHandle)
           {
           // rotation is disabled and this is a translation handle
           continue;
@@ -2154,6 +2404,25 @@ vtkMRMLSliceIntersectionInteractionRepresentation::GetHandleInfoList(SliceInters
     handlePositionWorld[1] = handlePositionWorld_h[1];
     handlePositionWorld[2] = handlePositionWorld_h[2];
     HandleInfo info(i, vtkMRMLSliceDisplayNode::ComponentTranslateSingleIntersectingSliceHandle,
+      intersectingSliceNodeID, handlePositionWorld, handlePositionLocal);
+    handleInfoList.push_back(info);
+    }
+
+  for (int i = 0; i < pipeline->TSRTranslationHandlePoints->GetNumberOfPoints(); ++i)
+    {
+    double handlePositionLocal[3] = { 0 };
+    double handlePositionLocal_h[4] = { 0.0,0.0,0.0,1.0 };
+    double handlePositionWorld[3] = { 0 };
+    double handlePositionWorld_h[4] = { 0.0,0.0,0.0,1.0 };
+    pipeline->TSRTranslationHandlePoints->GetPoint(i, handlePositionLocal);
+    handlePositionLocal_h[0] = handlePositionLocal[0];
+    handlePositionLocal_h[1] = handlePositionLocal[1];
+    handlePositionLocal_h[2] = handlePositionLocal[2];
+    currentXYToRAS->MultiplyPoint(handlePositionLocal_h, handlePositionWorld_h);
+    handlePositionWorld[0] = handlePositionWorld_h[0];
+    handlePositionWorld[1] = handlePositionWorld_h[1];
+    handlePositionWorld[2] = handlePositionWorld_h[2];
+    HandleInfo info(i, vtkMRMLSliceDisplayNode::ComponentTSRTranslateHandle,
       intersectingSliceNodeID, handlePositionWorld, handlePositionLocal);
     handleInfoList.push_back(info);
     }

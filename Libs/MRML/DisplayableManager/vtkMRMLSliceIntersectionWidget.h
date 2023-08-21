@@ -95,6 +95,8 @@ public:
     WidgetStateRotateIntersectingSlicesHandle, ///< rotating all intersecting slices by drag-and-dropping handle
     WidgetStateOnTranslateSingleIntersectingSliceHandle, ///< hovering over a single-slice translation interaction handle
     WidgetStateTranslateSingleIntersectingSliceHandle, ///< translating a single slice by drag-and-dropping handle
+    WidgetStateOnTranslateThickSlabHandle, ///< hovering over a single-slice translation interaction handle
+    WidgetStateTranslateThickSlabHandle, ///< translating a single slice by drag-and-dropping handle
 
     WidgetState_Last
     };
@@ -145,6 +147,8 @@ public:
     // WidgetStateOnTranslateSingleIntersectingSliceHandle/WidgetStateOnTranslateSingleIntersectingSliceHandle
     WidgetEventTranslateSingleIntersectingSliceHandleStart,
     WidgetEventTranslateSingleIntersectingSliceHandleEnd,
+    WidgetEventTranslateThickSlabHandleStart,
+    WidgetEventTranslateThickSlabHandleEnd,
     };
 
   /// Action State values and management
@@ -222,6 +226,9 @@ protected:
   bool ProcessRotateIntersectingSlicesHandleStart(vtkMRMLInteractionEventData* eventData);
   bool ProcessRotateIntersectingSlicesHandle(vtkMRMLInteractionEventData* eventData);
 
+  bool ProcessTranslateThickSlabHandleStart(vtkMRMLInteractionEventData* eventData);
+  bool ProcessTranslateThickSlabHandle(vtkMRMLInteractionEventData* eventData);
+
   bool ProcessWidgetMenu(vtkMRMLInteractionEventData* eventData);
 
   bool ProcessMaximizeView(vtkMRMLInteractionEventData* eventData);
@@ -262,6 +269,10 @@ protected:
   double StartTranslationPoint[2];
   double StartTranslationPoint_RAS[3];
   double CurrentTranslationPoint_RAS[3];
+
+  double StartThickSlabTranslationPoint[2];
+  double StartThickSlabTranslationPoint_RAS[3];
+  double CurrentThickSlabTranslationPoint_RAS[3];
 
   double StartActionFOV[3];
   double VolumeScalarRange[2];
