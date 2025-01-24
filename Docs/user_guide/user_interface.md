@@ -172,6 +172,7 @@ View Controllers module provides an alternate way of displaying these controller
 - **Rotate to volume plane** changes the orientation of the slice to match the closest acquisition orientation of the displayed volume.
 - **Orientation Marker** controls display of human, cube, etc in lower right corner.
 - **Ruler** controls display of ruler in slice view.
+- **Thick slab reconstruction** controls the visibility, interactivity, thickness, and mode for the thick slab reconstruction functionality. Thick slabs are represented by two parallel lines in the slice views. If the thickness is adjusted, the lines will move accordingly, and the corresponding voxel intensities will be modified in the slice view. If the interactive option is enabled, you can click and drag the lines to modify the thickness directly. By default, voxel intensities will be set according to the maximum but this can be changed as well.
 - **View link** button synchronizes properties of views in the same view group, such as foreground/background/label volume selection, foreground/label volume opacity, zoom factor.
   - For parallel views (i.e., that are set to the same orientation,OD such as `axial`), the view center position is synchronized as well.
   - Long-click on the button exposes **hot-linked** option, which controls when properties are synchronized (immediately or when the mouse button is released).
